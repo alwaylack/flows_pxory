@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Record Details</title>
+    <style>
+        /* 设置表格宽度为100%并合并边框 */
+        table {
+            width: auto;
+            border: 1px solid #ddd;
+            border-collapse: collapse;
+        }
+
+        /* 设置单元格样式 */
+        td {
+            padding: 8px; /* 增加内边距 */
+            border: 1px solid #ddd; /* 设置边框颜色 */
+            border-collapse: collapse; /* 合并边框 */
+            text-align: left; /* 左对齐文本 */
+        }
+
+        /* 设置表头样式 */
+        th {
+            background-color: #f2f2f2; /* 设置背景色 */
+            text-align: center; /* 居中对齐文本 */
+            white-space: pre-wrap; /* 允许换行 */
+        }
+
+        /* 针对 response-text 列设置较大的宽度 */
+        .response-text {
+            width: 100px; /* 根据需要调整宽度 */
+            white-space: wrap; /* 允许换行 */
+            word-wrap: break-word; /* 允许自动换行 */
+            overflow: hidden; /* 隐藏溢出文本 */
+            text-overflow: ellipsis; /* 使用省略号表示溢出文本 */
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 获取所有包含 JSON 数据的单元格
+            var responseTextCells = document.querySelectorAll('.response-text');
+
+            responseTextCells.forEach(function (cell) {
+                try {
+                    // 解析 JSON 数据
+                    let jsonData = JSON.parse(cell.innerText);
+                    // 格式化 JSON 数据并插入回单元格
+                    cell.innerText = JSON.stringify(jsonData, null, 4);
+                } catch (e) {
+                    console.error('Invalid JSON data in cell:', cell.innerText);
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+<table>
+    <thead>
+    <tr>
+        <th class="method">Method</th>
+        <th>URI</th>
+        <th>Content-Type</th>
+        <th>Body</th>
+        <th>Response</th>
+        <th>Status Code</th>
+        <th>Time</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for item in record_data %}
+    <tr>
+        <td class="method">{{ item[3]|e }}</td> <!--请求方法-->
+        <td>{{ item[2]|e }}</td> <!-- 请求uri -->
+        <td>{{ item[4]|e }}</td>     <!-- 请求content-type -->
+        {% if item[5] %}
+        <td class="response-text">{{ item[5]|e }}</td>
+        {% else %}
+        <td class="response-text">{}</td>
+        {% endif %}
+        <td class="response-text" style="flex-wrap: wrap">{{ item[7]|e }}</td>  <!-- 响应数据 -->
+        <td style="text-align: center">{{ item[6]|e }}</td>  <!-- 响应状态码 -->
+        <td style="text-align: center">{{ item[8]|e }}</td>  <!-- 录制时间 -->
+    </tr>
+    {% endfor %}
+    {% if not record_data %}
+    <tr>
+        <td colspan="5">No records found</td>
+    </tr>
+    {% endif %}
+    </tbody>
+</table>
+</body>
+</html>

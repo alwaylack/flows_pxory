@@ -1,0 +1,8 @@
+pymysql~=1.1.1
+elasticsearch~=7.13.3
+python-dotenv~=1.0.1
+mitmproxy~=11.0.2
+uvicorn~=0.30.6
+fastapi~=0.115.6
+requests~=2.32.3
+logbook~=1.8.0
