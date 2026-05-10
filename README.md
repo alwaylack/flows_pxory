@@ -1,9 +1,6 @@
 # 基于mitmproxy的流量录制工具
 
 > 基于mitmproxy的流量录制工具，可以录制http/https流量，并保存到数据库中(MySQL/SQLite/Elasticsearch等), 并可以通过Web界面查看流量记录。
-> 项目地址：https://github.com/zhuifengshen/mitmproxy-recorder
----
-作者：董瑞华 部门：国际业务中心\应用软件开发部\质量保证部\云业务保证组
 
 ## 1.介绍
 
