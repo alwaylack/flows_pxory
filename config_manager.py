@@ -1,14 +1,13 @@
-
 #!/usr/bin/python
 # -*- coding:UTF-8 -*-
 """==================================================================
-Copyright(c) 2025 Hangzhou Hikvision Digital Technology Co.,Ltd
 简要描述: config_manager.py - 动态配置管理器
 编写作者: dongruihua
 创建日期: 2025/1/20
 修订说明: 支持动态加载配置文件，当config.py发生变化时自动重新加载
          无需重启mitmproxy即可使配置变更生效
 ==================================================================="""
+
 import os
 import sys
 import time
@@ -20,7 +19,7 @@ from typing import Dict, Any, Optional
 
 from utils.logger import Log
 
-logger = Log('ConfigManager')
+logger = Log("ConfigManager")
 
 
 class ConfigManager:
@@ -29,7 +28,7 @@ class ConfigManager:
     支持热重载配置文件，自动检测配置变更
     """
 
-    def __init__(self, config_module_path: str = 'config'):
+    def __init__(self, config_module_path: str = "config"):
         """
         初始化配置管理器
         :param config_module_path: 配置模块路径，例如 'config' 或 'config.config'
@@ -67,12 +66,12 @@ class ConfigManager:
         获取配置文件的实际路径
         :return: 配置文件路径
         """
-        if hasattr(self.config_module, '__file__'):
+        if hasattr(self.config_module, "__file__"):
             return self.config_module.__file__
         # 如果没有__file__属性，尝试从模块路径构建
-        module_parts = self.config_module_path.split('.')
+        module_parts = self.config_module_path.split(".")
         base_path = os.path.dirname(os.path.abspath(__file__))
-        config_file = os.path.join(base_path, *module_parts) + '.py'
+        config_file = os.path.join(base_path, *module_parts) + ".py"
         return config_file
 
     def _calculate_file_hash(self) -> Optional[str]:
@@ -84,7 +83,7 @@ class ConfigManager:
             if not os.path.exists(self.config_file_path):
                 logger.warning(f"配置文件不存在: {self.config_file_path}")
                 return None
-            with open(self.config_file_path, 'rb') as f:
+            with open(self.config_file_path, "rb") as f:
                 file_content = f.read()
                 return hashlib.md5(file_content).hexdigest()
         except Exception as e:
@@ -140,7 +139,9 @@ class ConfigManager:
         """
         if callback not in self._reload_callbacks:
             self._reload_callbacks.append(callback)
-            logger.debug(f"注册重载回调: {callback.__name__ if hasattr(callback, '__name__') else callback}")
+            logger.debug(
+                f"注册重载回调: {callback.__name__ if hasattr(callback, '__name__') else callback}"
+            )
 
     def get(self, key: str, default: Any = None) -> Any:
         """
@@ -180,7 +181,7 @@ class ConfigManager:
         config_dict = {}
         try:
             for key in dir(self.config_module):
-                if not key.startswith('_'):
+                if not key.startswith("_"):
                     config_dict[key] = getattr(self.config_module, key)
         except Exception as e:
             logger.error(f"获取所有配置项失败: {e}")
@@ -241,15 +242,19 @@ class ConfigManager:
         :return: 状态字典
         """
         return {
-            'config_file': self.config_file_path,
-            'file_exists': os.path.exists(self.config_file_path),
-            'last_hash': self._last_hash,
-            'last_check_time': datetime.fromtimestamp(self._last_check_time).isoformat() if self._last_check_time else None,
-            'auto_reload_enabled': self._auto_reload_enabled,
-            'auto_reload_running': self._running,
-            'check_interval': self._check_interval,
-            'callback_count': len(self._reload_callbacks),
-            'config_items': len(self.get_all())
+            "config_file": self.config_file_path,
+            "file_exists": os.path.exists(self.config_file_path),
+            "last_hash": self._last_hash,
+            "last_check_time": (
+                datetime.fromtimestamp(self._last_check_time).isoformat()
+                if self._last_check_time
+                else None
+            ),
+            "auto_reload_enabled": self._auto_reload_enabled,
+            "auto_reload_running": self._running,
+            "check_interval": self._check_interval,
+            "callback_count": len(self._reload_callbacks),
+            "config_items": len(self.get_all()),
         }
 
 

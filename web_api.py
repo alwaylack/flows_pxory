@@ -1,13 +1,12 @@
-
 #!/usr/bin/python
 # -*- coding:UTF-8 -*-
 """==================================================================
-Copyright(c) 2025 Hangzhou Hikvision Digital Technology Co.,Ltd
 简要描述: web_api.py - 配置管理API接口
 编写作者: dongruihua
 创建日期: 2025/1/20
 修订说明: 提供HTTP API接口用于动态配置管理和证书管理
 ==================================================================="""
+
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -24,7 +23,7 @@ from config import Config
 app = FastAPI(
     title="流量录制配置管理API",
     description="提供动态配置管理和SSL证书管理的API接口",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -32,35 +31,49 @@ templates = Jinja2Templates(directory="templates")
 
 class ConfigUpdateRequest(BaseModel):
     """配置更新请求模型"""
+
     key: str
     value: Any
 
 
 class ConfigBatchUpdateRequest(BaseModel):
     """批量配置更新请求模型"""
+
     updates: Dict[str, Any]
 
 
 @app.get("/", response_class=HTMLResponse, tags=["系统"])
 async def index(request: Request):
     """系统首页"""
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "title": "流量录制系统"
-    })
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "title": "流量录制系统"}
+    )
 
 
 @app.get("/config", tags=["配置管理"])
 async def get_config():
     """
-    获取当前所有配置
+    获取当前所有配置（过滤敏感信息）
     :return: 配置字典
     """
     config_manager = get_config_manager()
+    all_config = config_manager.get_all()
+
+    # 过滤敏感配置项
+    SENSITIVE_KEYS = {"PASSWORD", "PASS", "SECRET", "KEY", "TOKEN", "AUTH"}
+    safe_config = {}
+    for k, v in all_config.items():
+        if any(s in k.upper() for s in SENSITIVE_KEYS):
+            safe_config[k] = "*** (已隐藏)"
+        else:
+            safe_config[k] = v
+
+    from datetime import datetime
+
     return {
         "status": "success",
-        "data": config_manager.get_all(),
-        "timestamp": Config.get('CURRENT_TIME', '')
+        "data": safe_config,
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -75,11 +88,7 @@ async def get_config_value(key: str):
     value = config_manager.get(key)
     if value is None:
         raise HTTPException(status_code=404, detail=f"配置项 '{key}' 不存在")
-    return {
-        "status": "success",
-        "key": key,
-        "value": value
-    }
+    return {"status": "success", "key": key, "value": value}
 
 
 @app.post("/config", tags=["配置管理"])
@@ -93,14 +102,13 @@ async def update_config(config_req: ConfigUpdateRequest):
     success = config_manager.set(config_req.key, config_req.value)
     if not success:
         raise HTTPException(
-            status_code=500,
-            detail=f"更新配置项 '{config_req.key}' 失败"
+            status_code=500, detail=f"更新配置项 '{config_req.key}' 失败"
         )
     return {
         "status": "success",
         "message": f"配置项 '{config_req.key}' 已更新",
         "key": config_req.key,
-        "value": config_req.value
+        "value": config_req.value,
     }
 
 
@@ -128,14 +136,11 @@ async def batch_update_config(batch_req: ConfigBatchUpdateRequest):
     response = {
         "status": "success" if not errors else "partial_success",
         "updated": results,
-        "errors": errors
+        "errors": errors,
     }
 
     if errors:
-        return JSONResponse(
-            status_code=207,
-            content=response
-        )
+        return JSONResponse(status_code=207, content=response)
     return response
 
 
@@ -148,20 +153,11 @@ async def reload_configuration():
     try:
         success = reload_config()
         if success:
-            return {
-                "status": "success",
-                "message": "配置已重载"
-            }
+            return {"status": "success", "message": "配置已重载"}
         else:
-            raise HTTPException(
-                status_code=500,
-                detail="配置重载失败，文件可能未变更"
-            )
+            raise HTTPException(status_code=500, detail="配置重载失败，文件可能未变更")
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"配置重载失败: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"配置重载失败: {str(e)}")
 
 
 @app.get("/config/status", tags=["配置管理"])
@@ -171,10 +167,7 @@ async def get_config_status():
     :return: 状态信息
     """
     config_manager = get_config_manager()
-    return {
-        "status": "success",
-        "data": config_manager.get_status()
-    }
+    return {"status": "success", "data": config_manager.get_status()}
 
 
 @app.get("/ssl/cert", tags=["SSL证书管理"])
@@ -184,10 +177,15 @@ async def get_cert_info():
     :return: 证书信息
     """
     cert_manager = get_cert_manager()
-    return {
-        "status": "success",
-        "data": cert_manager.get_cert_info()
-    }
+    info = cert_manager.get_cert_info()
+    # 过滤证书路径中的用户主目录信息
+    import os
+
+    home = os.path.expanduser("~")
+    for key, file_info in info.get("cert_files", {}).items():
+        if isinstance(file_info, dict) and "path" in file_info:
+            file_info["path"] = file_info["path"].replace(home, "~")
+    return {"status": "success", "data": info}
 
 
 @app.post("/ssl/cert/ensure", tags=["SSL证书管理"])
@@ -203,18 +201,12 @@ async def ensure_cert():
             return {
                 "status": "success",
                 "message": "证书状态确认成功",
-                "data": cert_manager.get_cert_info()
+                "data": cert_manager.get_cert_info(),
             }
         else:
-            raise HTTPException(
-                status_code=500,
-                detail="证书状态确认失败"
-            )
+            raise HTTPException(status_code=500, detail="证书状态确认失败")
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"证书操作失败: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"证书操作失败: {str(e)}")
 
 
 @app.post("/ssl/cert/generate", tags=["SSL证书管理"])
@@ -234,13 +226,10 @@ async def generate_cert():
         return {
             "status": "success",
             "message": "SSL证书已重新生成",
-            "data": cert_manager.get_cert_info()
+            "data": cert_manager.get_cert_info(),
         }
     else:
-        raise HTTPException(
-            status_code=500,
-            detail="证书生成失败"
-        )
+        raise HTTPException(status_code=500, detail="证书生成失败")
 
 
 @app.post("/ssl/cert/install", tags=["SSL证书管理"])
@@ -252,15 +241,9 @@ async def install_cert():
     cert_manager = get_cert_manager()
     success = cert_manager.auto_install_certificate()
     if success:
-        return {
-            "status": "success",
-            "message": "证书已安装到系统信任存储"
-        }
+        return {"status": "success", "message": "证书已安装到系统信任存储"}
     else:
-        raise HTTPException(
-            status_code=500,
-            detail="证书安装失败"
-        )
+        raise HTTPException(status_code=500, detail="证书安装失败")
 
 
 @app.get("/ssl/cert/check", tags=["SSL证书管理"])
@@ -278,7 +261,7 @@ async def check_cert():
             "valid": True,
             "message": f"证书有效，剩余{days_remaining}天",
             "days_remaining": days_remaining,
-            "expiry_date": expiry_date
+            "expiry_date": expiry_date,
         }
     else:
         return {
@@ -286,7 +269,7 @@ async def check_cert():
             "valid": False,
             "message": f"证书即将过期或无效，剩余{days_remaining}天",
             "days_remaining": days_remaining,
-            "expiry_date": expiry_date
+            "expiry_date": expiry_date,
         }
 
 
@@ -302,13 +285,10 @@ async def cleanup_certs(keep_backups: int = 3):
     if success:
         return {
             "status": "success",
-            "message": f"已清理旧证书备份（保留{keep_backups}个）"
+            "message": f"已清理旧证书备份（保留{keep_backups}个）",
         }
     else:
-        raise HTTPException(
-            status_code=500,
-            detail="清理失败"
-        )
+        raise HTTPException(status_code=500, detail="清理失败")
 
 
 @app.get("/health", tags=["系统"])
@@ -325,25 +305,25 @@ async def health_check():
 
     health_status = {
         "status": "healthy",
-        "timestamp": Config.get('CURRENT_TIME', ''),
+        "timestamp": Config.get("CURRENT_TIME", ""),
         "services": {
             "config_manager": {
                 "status": "running",
-                "auto_reload": config_status['auto_reload_running']
+                "auto_reload": config_status["auto_reload_running"],
             },
             "ssl_cert_manager": {
                 "status": "active",
-                "cert_valid": cert_info['is_valid']
-            }
+                "cert_valid": cert_info["is_valid"],
+            },
         },
         "cert_info": {
-            "valid": cert_info['is_valid'],
-            "days_remaining": cert_info['days_remaining']
-        }
+            "valid": cert_info["is_valid"],
+            "days_remaining": cert_info["days_remaining"],
+        },
     }
 
     # 如果证书即将过期，健康状态为警告
-    if cert_info['days_remaining'] is not None and cert_info['days_remaining'] < 7:
+    if cert_info["days_remaining"] is not None and cert_info["days_remaining"] < 7:
         health_status["status"] = "warning"
         health_status["message"] = "证书即将过期"
 
@@ -362,6 +342,7 @@ def start_web_api(host: str = "0.0.0.0", port: int = 8000):
 if __name__ == "__main__":
     # 添加时间到配置
     from datetime import datetime
+
     Config.CURRENT_TIME = datetime.now().isoformat()
 
     print("启动流量录制配置管理API...")

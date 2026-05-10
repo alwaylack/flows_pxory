@@ -1,14 +1,13 @@
-
 #!/usr/bin/python
 # -*- coding:UTF-8 -*-
 """==================================================================
-Copyright(c) 2025 Hangzhou Hikvision Digital Technology Co.,Ltd
 简要描述: ssl_cert_manager.py - SSL证书管理器
 编写作者: dongruihua
 创建日期: 2025/1/20
 修订说明: 自动检测、安装和管理mitmproxy所需的SSL证书
          解决证书过期或缺失问题
 ==================================================================="""
+
 import os
 import sys
 import subprocess
@@ -22,7 +21,7 @@ import json
 
 from utils.logger import Log
 
-logger = Log('SSLCertManager')
+logger = Log("SSLCertManager")
 
 
 class SSLCertManager:
@@ -32,15 +31,15 @@ class SSLCertManager:
     """
 
     # mitmproxy默认证书路径
-    MITMPROXY_CERT_DIR = os.path.join(os.path.expanduser('~'), '.mitmproxy')
-    MITMPROXY_CA_CERT = os.path.join(MITMPROXY_CERT_DIR, 'mitmproxy-ca.pem')
-    MITMPROXY_CA_CRT = os.path.join(MITMPROXY_CERT_DIR, 'mitmproxy-ca.crt')
-    MITMPROXY_CA_KEY = os.path.join(MITMPROXY_CERT_DIR, 'mitmproxy-ca.key')
-    MITMPROXY_CA_SERIAL = os.path.join(MITMPROXY_CERT_DIR, 'mitmproxy-ca.srl')
-    MITMPROXY_CA_PEM = os.path.join(MITMPROXY_CERT_DIR, 'mitmproxy-ca-cert.pem')
+    MITMPROXY_CERT_DIR = os.path.join(os.path.expanduser("~"), ".mitmproxy")
+    MITMPROXY_CA_CERT = os.path.join(MITMPROXY_CERT_DIR, "mitmproxy-ca.pem")
+    MITMPROXY_CA_CRT = os.path.join(MITMPROXY_CERT_DIR, "mitmproxy-ca.crt")
+    MITMPROXY_CA_KEY = os.path.join(MITMPROXY_CERT_DIR, "mitmproxy-ca.key")
+    MITMPROXY_CA_SERIAL = os.path.join(MITMPROXY_CERT_DIR, "mitmproxy-ca.srl")
+    MITMPROXY_CA_PEM = os.path.join(MITMPROXY_CERT_DIR, "mitmproxy-ca-cert.pem")
 
     # Windows证书存储
-    WINDOWS_CERT_STORE = 'Root'  # 受信任的根证书颁发机构
+    WINDOWS_CERT_STORE = "Root"  # 受信任的根证书颁发机构
 
     def __init__(self, cert_dir: Optional[str] = None):
         """
@@ -48,11 +47,11 @@ class SSLCertManager:
         :param cert_dir: 自定义证书目录，如果为None则使用默认路径
         """
         self.cert_dir = cert_dir or self.MITMPROXY_CERT_DIR
-        self.ca_cert_path = os.path.join(self.cert_dir, 'mitmproxy-ca.pem')
-        self.ca_crt_path = os.path.join(self.cert_dir, 'mitmproxy-ca.crt')
-        self.ca_key_path = os.path.join(self.cert_dir, 'mitmproxy-ca.key')
-        self.ca_serial_path = os.path.join(self.cert_dir, 'mitmproxy-ca.srl')
-        self.ca_pem_path = os.path.join(self.cert_dir, 'mitmproxy-ca-cert.pem')
+        self.ca_cert_path = os.path.join(self.cert_dir, "mitmproxy-ca.pem")
+        self.ca_crt_path = os.path.join(self.cert_dir, "mitmproxy-ca.crt")
+        self.ca_key_path = os.path.join(self.cert_dir, "mitmproxy-ca.key")
+        self.ca_serial_path = os.path.join(self.cert_dir, "mitmproxy-ca.srl")
+        self.ca_pem_path = os.path.join(self.cert_dir, "mitmproxy-ca-cert.pem")
 
         # 确保证书目录存在
         self._ensure_cert_dir()
@@ -88,10 +87,7 @@ class SSLCertManager:
         """
         try:
             result = subprocess.run(
-                ['openssl', 'version'],
-                capture_output=True,
-                text=True,
-                timeout=5
+                ["openssl", "version"], capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 logger.debug(f"OpenSSL可用: {result.stdout.strip()}")
@@ -119,23 +115,41 @@ class SSLCertManager:
 
             # 生成CA私钥
             logger.info("生成CA私钥...")
-            subprocess.run([
-                'openssl', 'genrsa', '-out', self.ca_key_path, '2048'
-            ], check=True, capture_output=True)
+            subprocess.run(
+                ["openssl", "genrsa", "-out", self.ca_key_path, "4096"],
+                check=True,
+                capture_output=True,
+            )
+            # 设置私钥文件权限为仅所有者可读写 (0600)
+            import stat
+
+            os.chmod(self.ca_key_path, stat.S_IRUSR | stat.S_IWUSR)
+            logger.debug("SSL私钥权限已设置为 0600")
 
             # 生成CA证书
             logger.info("生成CA证书...")
-            subprocess.run([
-                'openssl', 'req', '-new', '-x509',
-                '-key', self.ca_key_path,
-                '-out', self.ca_cert_path,
-                '-days', '3650',  # 10年有效期
-                '-subj', '/CN=mitmproxy/O=mitmproxy/CN=mitmproxy'
-            ], check=True, capture_output=True)
+            subprocess.run(
+                [
+                    "openssl",
+                    "req",
+                    "-new",
+                    "-x509",
+                    "-key",
+                    self.ca_key_path,
+                    "-out",
+                    self.ca_cert_path,
+                    "-days",
+                    "3650",  # 10年有效期
+                    "-subj",
+                    "/CN=mitmproxy/O=mitmproxy/CN=mitmproxy",
+                ],
+                check=True,
+                capture_output=True,
+            )
 
             # 生成证书序列号文件
-            with open(self.ca_serial_path, 'w') as f:
-                f.write('01')
+            with open(self.ca_serial_path, "w") as f:
+                f.write("01")
 
             # 创建证书信任文件
             shutil.copy2(self.ca_cert_path, self.ca_pem_path)
@@ -162,11 +176,13 @@ class SSLCertManager:
             # 检查mitmproxy是否可用
             try:
                 subprocess.run(
-                    ['mitmproxy', '--version'],
-                    capture_output=True,
-                    timeout=5
+                    ["mitmproxy", "--version"], capture_output=True, timeout=5
                 )
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+            except (
+                subprocess.CalledProcessError,
+                FileNotFoundError,
+                subprocess.TimeoutExpired,
+            ):
                 logger.warning("mitmproxy不可用")
                 return False
 
@@ -189,7 +205,7 @@ class SSLCertManager:
             self.ca_cert_path,
             self.ca_key_path,
             self.ca_crt_path,
-            self.ca_pem_path
+            self.ca_pem_path,
         ]
 
         for cert_file in cert_files:
@@ -210,17 +226,19 @@ class SSLCertManager:
 
         try:
             # 使用openssl检查证书有效期
-            result = subprocess.run([
-                'openssl', 'x509', '-in', self.ca_cert_path,
-                '-noout', '-dates'
-            ], capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                ["openssl", "x509", "-in", self.ca_cert_path, "-noout", "-dates"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
 
             # 解析有效期
-            lines = result.stdout.strip().split('\n')
+            lines = result.stdout.strip().split("\n")
             not_after = None
             for line in lines:
-                if line.startswith('notAfter='):
-                    not_after = line.split('=')[1]
+                if line.startswith("notAfter="):
+                    not_after = line.split("=")[1]
                     break
 
             if not not_after:
@@ -229,9 +247,7 @@ class SSLCertManager:
 
             # 解析日期
             # openssl输出的日期格式: Dec 25 23:59:59 2035 GMT
-            expiry_date = datetime.datetime.strptime(
-                not_after, '%b %d %H:%M:%S %Y %Z'
-            )
+            expiry_date = datetime.datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
             current_date = datetime.datetime.now()
 
             # 计算剩余天数
@@ -240,9 +256,11 @@ class SSLCertManager:
             # 检查是否在阈值内
             is_valid = days_remaining > self.CERT_EXPIRY_THRESHOLD
 
-            logger.info(f"证书有效期检查: 剩余{days_remaining}天，过期时间: {expiry_date.strftime('%Y-%m-%d')}")
+            logger.info(
+                f"证书有效期检查: 剩余{days_remaining}天，过期时间: {expiry_date.strftime('%Y-%m-%d')}"
+            )
 
-            return is_valid, days_remaining, expiry_date.strftime('%Y-%m-%d')
+            return is_valid, days_remaining, expiry_date.strftime("%Y-%m-%d")
 
         except subprocess.CalledProcessError as e:
             logger.error(f"检查证书有效期失败: {e}")
@@ -256,7 +274,7 @@ class SSLCertManager:
         将证书安装到Windows受信任的根证书颁发机构
         :return: 是否安装成功
         """
-        if sys.platform != 'win32':
+        if sys.platform != "win32":
             logger.info("非Windows系统，跳过Windows证书存储安装")
             return False
 
@@ -264,17 +282,24 @@ class SSLCertManager:
             logger.info("尝试将证书安装到Windows受信任的根证书颁发机构...")
 
             # 使用certutil命令安装证书
-            result = subprocess.run([
-                'certutil', '-addstore', self.WINDOWS_CERT_STORE, self.ca_cert_path
-            ], capture_output=True, text=True)
+            result = subprocess.run(
+                ["certutil", "-addstore", self.WINDOWS_CERT_STORE, self.ca_cert_path],
+                capture_output=True,
+                text=True,
+            )
 
             if result.returncode == 0:
                 logger.info("证书已成功安装到Windows受信任的根证书颁发机构")
                 return True
             else:
+                if "Access is denied" in result.stderr or "拒绝访问" in result.stderr:
+                    logger.error("安装证书需要管理员权限，请以管理员身份运行")
                 logger.warning(f"安装证书到Windows存储失败: {result.stderr}")
                 return False
 
+        except PermissionError:
+            logger.error("权限不足，无法修改Windows证书存储（需要管理员权限）")
+            return False
         except Exception as e:
             logger.error(f"安装证书到Windows存储时发生错误: {e}")
             return False
@@ -284,7 +309,7 @@ class SSLCertManager:
         将证书安装到macOS钥匙串
         :return: 是否安装成功
         """
-        if sys.platform != 'darwin':
+        if sys.platform != "darwin":
             logger.info("非macOS系统，跳过钥匙串安装")
             return False
 
@@ -292,12 +317,20 @@ class SSLCertManager:
             logger.info("尝试将证书安装到macOS钥匙串...")
 
             # 使用security命令安装证书
-            result = subprocess.run([
-                'security', 'add-trusted-cert',
-                '-d', '-r', 'trustRoot',
-                '-k', '/Library/Keychains/System.keychain',
-                self.ca_cert_path
-            ], capture_output=True, text=True)
+            result = subprocess.run(
+                [
+                    "security",
+                    "add-trusted-cert",
+                    "-d",
+                    "-r",
+                    "trustRoot",
+                    "-k",
+                    "/Library/Keychains/System.keychain",
+                    self.ca_cert_path,
+                ],
+                capture_output=True,
+                text=True,
+            )
 
             if result.returncode == 0:
                 logger.info("证书已成功安装到macOS钥匙串")
@@ -315,7 +348,7 @@ class SSLCertManager:
         将证书安装到Linux信任存储
         :return: 是否安装成功
         """
-        if sys.platform not in ['linux', 'linux2']:
+        if sys.platform not in ["linux", "linux2"]:
             logger.info("非Linux系统，跳过信任存储安装")
             return False
 
@@ -325,23 +358,24 @@ class SSLCertManager:
             # 检查系统是否有update-ca-certificates
             try:
                 subprocess.run(
-                    ['update-ca-certificates', '--help'],
-                    capture_output=True,
-                    timeout=5
+                    ["update-ca-certificates", "--help"], capture_output=True, timeout=5
                 )
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+            except (
+                subprocess.CalledProcessError,
+                FileNotFoundError,
+                subprocess.TimeoutExpired,
+            ):
                 logger.warning("系统没有update-ca-certificates命令")
                 return False
 
             # 复制证书到系统CA目录
-            ca_dir = '/usr/local/share/ca-certificates/'
+            ca_dir = "/usr/local/share/ca-certificates/"
             os.makedirs(ca_dir, exist_ok=True)
-            shutil.copy2(self.ca_cert_path, os.path.join(ca_dir, 'mitmproxy-ca.crt'))
+            shutil.copy2(self.ca_cert_path, os.path.join(ca_dir, "mitmproxy-ca.crt"))
 
             # 更新CA证书
             result = subprocess.run(
-                ['update-ca-certificates'],
-                capture_output=True, text=True
+                ["update-ca-certificates"], capture_output=True, text=True
             )
 
             if result.returncode == 0:
@@ -367,11 +401,11 @@ class SSLCertManager:
         logger.info("开始自动安装证书到系统信任存储...")
 
         # 根据系统类型选择安装方法
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             return self.install_to_windows_store()
-        elif sys.platform == 'darwin':
+        elif sys.platform == "darwin":
             return self.install_to_macos_keychain()
-        elif sys.platform in ['linux', 'linux2']:
+        elif sys.platform in ["linux", "linux2"]:
             return self.install_to_linux_trust_store()
         else:
             logger.warning(f"不支持的系统平台: {sys.platform}")
@@ -407,8 +441,13 @@ class SSLCertManager:
         is_valid, days_remaining, expiry_date = self.check_cert_validity()
 
         if not is_valid:
-            if days_remaining is not None and days_remaining <= self.CERT_EXPIRY_THRESHOLD:
-                logger.warning(f"证书即将过期（剩余{days_remaining}天），正在重新生成...")
+            if (
+                days_remaining is not None
+                and days_remaining <= self.CERT_EXPIRY_THRESHOLD
+            ):
+                logger.warning(
+                    f"证书即将过期（剩余{days_remaining}天），正在重新生成..."
+                )
 
                 # 重新生成证书
                 if self._check_openssl_available():
@@ -436,11 +475,11 @@ class SSLCertManager:
         is_valid, days_remaining, expiry_date = self.check_cert_validity()
 
         cert_files = {
-            'ca_cert': self.ca_cert_path,
-            'ca_key': self.ca_key_path,
-            'ca_crt': self.ca_crt_path,
-            'ca_pem': self.ca_pem_path,
-            'ca_serial': self.ca_serial_path
+            "ca_cert": self.ca_cert_path,
+            "ca_key": self.ca_key_path,
+            "ca_crt": self.ca_crt_path,
+            "ca_pem": self.ca_pem_path,
+            "ca_serial": self.ca_serial_path,
         }
 
         file_info = {}
@@ -448,27 +487,24 @@ class SSLCertManager:
             if os.path.exists(path):
                 file_stat = os.stat(path)
                 file_info[name] = {
-                    'exists': True,
-                    'path': path,
-                    'size': file_stat.st_size,
-                    'modified': datetime.datetime.fromtimestamp(
+                    "exists": True,
+                    "path": path,
+                    "size": file_stat.st_size,
+                    "modified": datetime.datetime.fromtimestamp(
                         file_stat.st_mtime
-                    ).strftime('%Y-%m-%d %H:%M:%S')
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
                 }
             else:
-                file_info[name] = {
-                    'exists': False,
-                    'path': path
-                }
+                file_info[name] = {"exists": False, "path": path}
 
         return {
-            'cert_dir': self.cert_dir,
-            'is_valid': is_valid,
-            'days_remaining': days_remaining,
-            'expiry_date': expiry_date,
-            'cert_files': file_info,
-            'auto_install_trusted': self.AUTO_INSTALL_TRUSTED,
-            'expiry_threshold': self.CERT_EXPIRY_THRESHOLD
+            "cert_dir": self.cert_dir,
+            "is_valid": is_valid,
+            "days_remaining": days_remaining,
+            "expiry_date": expiry_date,
+            "cert_files": file_info,
+            "auto_install_trusted": self.AUTO_INSTALL_TRUSTED,
+            "expiry_threshold": self.CERT_EXPIRY_THRESHOLD,
         }
 
     def cleanup_old_certs(self, keep_backups: int = 3) -> bool:
@@ -483,7 +519,7 @@ class SSLCertManager:
             # 查找备份文件
             backup_files = []
             for filename in os.listdir(self.cert_dir):
-                if filename.endswith('.backup') or filename.endswith('.old'):
+                if filename.endswith(".backup") or filename.endswith(".old"):
                     file_path = os.path.join(self.cert_dir, filename)
                     file_stat = os.stat(file_path)
                     backup_files.append((file_path, file_stat.st_mtime))
@@ -493,7 +529,7 @@ class SSLCertManager:
 
             # 删除多余的备份
             if len(backup_files) > keep_backups:
-                files_to_delete = backup_files[:len(backup_files) - keep_backups]
+                files_to_delete = backup_files[: len(backup_files) - keep_backups]
                 for file_path, _ in files_to_delete:
                     try:
                         os.remove(file_path)
@@ -533,7 +569,7 @@ def ensure_certificate() -> bool:
     return manager.ensure_certificate()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 测试证书管理器
     print("SSL Certificate Manager Test")
     print("=" * 50)
@@ -559,4 +595,5 @@ if __name__ == '__main__':
     # 获取证书信息
     print(f"\n证书信息:")
     import json
+
     print(json.dumps(manager.get_cert_info(), indent=2, ensure_ascii=False))

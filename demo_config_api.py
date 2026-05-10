@@ -1,13 +1,12 @@
-
 #!/usr/bin/python
 # -*- coding:UTF-8 -*-
 """==================================================================
-Copyright(c) 2025 Hangzhou Hikvision Digital Technology Co.,Ltd
 简要描述: demo_config_api.py - 配置API演示脚本
 编写作者: dongruihua
 创建日期: 2025/1/20
 修订说明: 演示如何使用配置管理API
 ==================================================================="""
+
 import requests
 import json
 import time
@@ -40,10 +39,7 @@ def demo_config_management():
 
     # 3. 更新配置项
     print("\n3. 更新LOG_LEVEL配置 (11 -> 10):")
-    update_data = {
-        "key": "LOG_LEVEL",
-        "value": 10
-    }
+    update_data = {"key": "LOG_LEVEL", "value": 10}
     response = requests.post(f"{BASE_URL}/config", json=update_data)
     if response.status_code == 200:
         print(json.dumps(response.json(), indent=2, ensure_ascii=False))
@@ -52,12 +48,7 @@ def demo_config_management():
 
     # 4. 批量更新配置
     print("\n4. 批量更新配置:")
-    batch_data = {
-        "updates": {
-            "LOG_LEVEL": 11,
-            "AUTO_CONFIG_RELOAD": True
-        }
-    }
+    batch_data = {"updates": {"LOG_LEVEL": 11, "AUTO_CONFIG_RELOAD": True}}
     response = requests.put(f"{BASE_URL}/config/batch", json=batch_data)
     if response.status_code in [200, 207]:
         print(json.dumps(response.json(), indent=2, ensure_ascii=False))
